@@ -23,7 +23,7 @@ void loop() {
   if (knockValue >= threshold)
   {
     unsigned long currentMillis = millis();
-    if (currentMillis >= 1000)
+    if (currentMillis >= 5000)
     {
       tone(buzzerPin, buzzerTone);
       buttonState = digitalRead(pushButton);

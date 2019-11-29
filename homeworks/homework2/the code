@@ -1,0 +1,53 @@
+const int buzzerPin = 8;
+const int knockSensor = A0;
+const int pushButton = 2;
+int knockValue = 0;
+int buzzerTone = 1000;
+int buttonState = 0;
+int threshold = 350;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+int lastButtonState = 1;
+int buttonValue = 1;
+int ok = 0;
+unsigned long previousMillis = 0;
+
+void setup() {
+  pinMode(pushButton, INPUT_PULLUP);
+  pinMode(knockSensor, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  if (ok == 0)
+  {
+    knockValue = analogRead(knockSensor);
+    Serial.println(knockValue);
+    noTone(buzzerPin);
+    if (knockValue >= threshold)
+      ok = 1;
+  }
+  if (ok == 1)
+  {
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillis >= 5000)
+    {
+      tone(buzzerPin, buzzerTone);
+      buttonState = digitalRead(pushButton);
+      if (buttonState != lastButtonState)
+      {
+        lastButtonState = buttonState;
+        if (buttonState == 0 )
+          buttonValue = !buttonValue;
+        if (buttonValue == 1)
+          {ok = 0; previousMillis=currentMillis; noTone(buzzerPin);}
+      }
+      if (buttonValue == 0)
+        noTone(buzzerPin);
+      if (buttonValue == 1)
+        tone(buzzerPin, buzzerTone);
+      Serial.println(buttonValue);
+    }
+  }
+}

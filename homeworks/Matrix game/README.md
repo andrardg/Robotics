@@ -24,4 +24,5 @@ In the Info page, there is information about the creator's name, the game's name
 While you are in the menu, there is a Christmass animation on the matrix.
 
 HOW TO PLAY
+
 After you choose Play Game, you have 3 seconds before the colums start coming. There is only one column at a time on the matrix, coming from right to left. The bird is constantly on the left side and you have to press the button on the joystick to make it rise from the ground. The bird falls very quickly, so you have to press the button relatively often. Each colum has either a 2 or a 3 spaces gap, which the bird has to go through. If you touch the colums, you lose a life. In total, there are 3 lives. You can only win the game by reaching level 1000.

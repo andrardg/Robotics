@@ -1,0 +1,617 @@
+#include <LiquidCrystal.h>
+#include <LedControl.h>
+#include <EEPROM.h>
+#include "pitches.h"
+LiquidCrystal lcd(13, 12, 11, 10, 9, 8);
+LedControl lc = LedControl(7, 5, 6, 1); //DIN, CLK, LOAD, No. DRIVER
+
+const int PinX = A0;
+const int PinY = A1;
+const int PinSW = A2;
+int xValue = 0;
+int yValue = 0;
+int swState = 0;
+int lastSwState = 0;
+bool joyMovedX = false;
+bool joyMovedY = false;
+int minThreshold = 400;
+int maxThreshold = 800;
+int level = 0;
+int startingLevel = 0;
+int currentHighscore = 0;
+int highscore[4] = {0, 0, 0, 0};
+int mainMenu = 1;
+int menuOption = 1;
+int previousMillis = 0;
+int currentMillis = 0;
+int previousMillisAutoFlap = 0;
+unsigned long debounceDelay = 50;
+int page[5] = {0, 1, 1, 1, 1};
+int pageMax[5] = {0, 1, 3, 2, 5};
+int sound = 0;
+int modifiedScreen = 0;
+int edit = 0;
+char nume[4][4] = {"NBD", "NBD", "NBD", "NBD"};
+char currentName[4] = "AAA";
+int letter = 0;
+int birdPosition = 1;
+int flap = 0;
+int lastFlap = 0;
+int difficultyMillis = 0;
+int lastDifficultyChange = 0;
+int highscoreMillis = 0;
+int newHighscorePerGame = 0;
+struct
+{
+  int iHole; //the line at which the hole starts; the hole is always made of 3 consecutive LEDs, the first one being iHole
+  int j; //the column that the wall is at a given time
+} wall[4];
+int noWall = 0; //counts the number of the walls
+unsigned long lastWallCreate;
+unsigned long lastWallMove;
+short int intervalWallMove = 300;
+short int intervalWallCreate = 1300;
+
+
+
+
+
+
+
+
+
+void setup() {
+
+  lcd.begin(16, 2);
+  printMain();
+  pinMode(PinSW, INPUT_PULLUP);
+  Serial.begin(9600);
+  lc.shutdown(0, false); // turn off power saving, enables display
+  lc.setIntensity(0, 2); // sets brightness (0~15 possible values)
+  lc.clearDisplay(0);// clear screen
+  /*  EEPROM.write(1, 0);
+     EEPROM.write(2, 'N');
+     EEPROM.write(3, 'B');
+     EEPROM.write(4, 'D');
+     EEPROM.write(5, 0);
+     EEPROM.write(6, 'N');
+     EEPROM.write(7, 'B');
+     EEPROM.write(8, 'D');
+     EEPROM.update(9, 0);
+     EEPROM.write(10, 'N');
+     EEPROM.write(11, 'B');
+     EEPROM.write(12, 'D');
+  */
+  for (int i = 1; i <= 3; i++)
+    highscore[i] = EEPROM.read(i * 4 - 3);
+  for (int i = 1; i <= 3; i++)
+    for (int j = 0; j <= 2; j++)
+      nume[i][j] = EEPROM.read((i - 1) * 4 + j + 2);
+}
+
+void printMain()
+{
+  lcd.print("Main menu  >Play");
+  lcd.setCursor(0, 1);
+  lcd.print(" High  Set  Info");
+}
+void printMainH()
+{
+  lcd.print("Main menu   Play");
+  lcd.setCursor(0, 1);
+  lcd.print(">High  Set  Info");
+}
+void printMainS()
+{
+  lcd.print("Main menu   Play");
+  lcd.setCursor(0, 1);
+  lcd.print(" High >Set  Info");
+}
+void printMainI()
+{
+  lcd.print("Main menu   Play");
+  lcd.setCursor(0, 1);
+  lcd.print(" High  Set >Info");
+}
+void printGame()
+{ lcd.clear();
+  lcd.print("Level:");
+  lcd.print(level);
+  lcd.setCursor(0, 1);
+  lcd.print("Score:");
+  lcd.print(currentHighscore);
+}
+void printHighscore(int x)
+{
+  if (x == 1)
+  { lcd.print(">Back  Highscore");
+    lcd.setCursor(0, 1);
+    lcd.print("1. ");
+    lcd.print(highscore[1]);
+    lcd.print(" - ");
+    lcd.print(nume[1]);
+  }
+  if (x == 2)
+  {
+    lcd.print("1. ");
+    lcd.print(highscore[1]);
+    lcd.print(" - ");
+    lcd.print(nume[1]);
+    lcd.setCursor(0, 1);
+    lcd.print("2. ");
+    lcd.print(highscore[2]);
+    lcd.print(" - ");
+    lcd.print(nume[2]);
+  }
+  if (x == 3)
+  { lcd.print("2. ");
+    lcd.print(highscore[2]);
+    lcd.print(" - ");
+    lcd.print(nume[2]);
+    lcd.setCursor(0, 1);
+    lcd.print("3. ");
+    lcd.print(highscore[3]);
+    lcd.print(" - ");
+    lcd.print(nume[3]);
+  }
+}
+void printSettings(int x)
+{
+  if (x == 1)
+  { lcd.print(">Back   Settings");
+    lcd.setCursor(0, 1);
+    lcd.print(" Start level: ");
+    lcd.print(startingLevel);
+  }
+  if (x == 2)
+  { lcd.print(" Back   Settings");
+    lcd.setCursor(0, 1);
+    lcd.print(">Start level: ");
+    lcd.print(startingLevel);
+  }
+  if (x == 3)
+  { lcd.print(">Start level: ");
+    lcd.print(startingLevel);
+    lcd.setCursor(0, 1);
+    lcd.print(" Name: ");
+    lcd.print(currentName);
+  }
+  if (x == 4)
+  { lcd.print(" Start level: ");
+    lcd.print(startingLevel);
+    lcd.setCursor(0, 1);
+    lcd.print(">Name: ");
+    lcd.print(currentName);
+  }
+  if (x == 7)
+  { lcd.print(" Back   Settings");
+    lcd.setCursor(0, 1);
+    lcd.print(" Start level >");
+    lcd.print(startingLevel);
+  }
+  if (x == 8)
+  { lcd.print(" Start level >");
+    lcd.print(startingLevel);
+    lcd.setCursor(0, 1);
+    lcd.print(" Name: ");
+    lcd.print(currentName);
+  }
+  if (x == 11)
+  { lcd.print(">");
+    lcd.print(currentName[0]);
+    lcd.print(currentName[1]);
+    lcd.print(currentName[2]);
+    lcd.print("  ENTER");
+  }
+  if (x == 12)
+  {
+    lcd.print(currentName[0]);
+    lcd.print(">");
+    lcd.print(currentName[1]);
+    lcd.print(currentName[2]);
+    lcd.print("  ENTER");
+  }
+  if (x == 13)
+  {
+    lcd.print(currentName[0]);
+    lcd.print(currentName[1]);
+    lcd.print(">");
+    lcd.print(currentName[2]);
+    lcd.print("  ENTER");
+  }
+  if (x == 14)
+  {
+    lcd.print(currentName);
+    lcd.print("  >ENTER");
+  }
+}
+void printInformation( int x)
+{
+  if (x == 1)
+  { lcd.print(">Back       Info");
+    lcd.setCursor(0, 1);
+    lcd.print("Flappy Bird");
+  }
+  if (x == 2)
+  {
+    lcd.print("Flappy Bird");
+    lcd.setCursor(0, 1);
+    lcd.print("Dumitrascu Andra");
+  }
+  if (x == 3)
+  { lcd.print("Dumitrascu Andra");
+    lcd.setCursor(0, 1);
+    lcd.print("@UnibucRobotics");
+  }
+  if (x == 4)
+  {
+    lcd.print("@UnibucRobotics");
+    lcd.setCursor(0, 1);
+    lcd.print("github.com/andra");
+  }
+  if (x == 5)
+  { lcd.print("github.com/andra");
+    lcd.setCursor(0, 1);
+    lcd.print("rdg/Robotics");
+  }
+}
+void print(int mainMenu, int menuOption, int x)
+{
+  if (mainMenu == 1)
+  {
+    if (menuOption == 1)
+      printMain();
+    if (menuOption == 2)
+      printMainH();
+    if (menuOption == 3)
+      printMainS();
+    if (menuOption == 4)
+      printMainI();
+  }
+  if (mainMenu == 0)
+  {
+    if (menuOption == 1)
+      printGame();
+    if (menuOption == 2)
+      printHighscore(x);
+    if (menuOption == 3)
+      printSettings(x);
+    if (menuOption == 4)
+      printInformation(x);
+  }
+}
+void printNewHighscore()
+{
+  lcd.print("You made it to");
+  lcd.setCursor(0, 1);
+  lcd.print("highscore!!");
+}
+void doFlap()
+{
+  if (!flap)
+  {
+    if (currentMillis - previousMillis >= 200)
+    {
+      previousMillis = currentMillis;
+      lc.setLed(0, birdPosition, 1, false);
+      if (birdPosition < 7)
+        birdPosition++;
+      lc.setLed(0, birdPosition, 1, true);
+    }
+  }
+  else
+  {
+    if (currentMillis - previousMillis >= 130)
+    {
+      previousMillis = currentMillis;
+      lc.setLed(0, birdPosition, 1,  false);
+      if (birdPosition > 0)
+        birdPosition--;
+      lc.setLed(0, birdPosition, 1, true);
+      flap--;
+    }
+  }
+}
+void switchWall(int iHole, int j, bool b)
+{
+  int i;
+  for (i = 0; i <= 7; i++)
+    if (i != iHole && i != iHole + 1 && i != iHole + 2)
+      lc.setLed(0, i, j, b);
+}
+void doWall()
+{
+  if (currentMillis - lastWallCreate >= intervalWallCreate)
+  {
+    lastWallCreate = currentMillis;
+    wall[noWall].iHole = random(1, 5);
+    wall[noWall].j = 7;
+    switchWall(wall[noWall].iHole, wall[noWall].j, 1);
+    noWall++;
+  }
+  if (currentMillis - lastWallMove >= intervalWallMove)
+  {
+    lastWallMove = currentMillis;
+    for (int p = 0; p < noWall; p++)
+    {
+      if (wall[p].j == 0)
+      {
+        switchWall(wall[p].iHole, wall[p].j, 0);
+        wall[p] = wall[noWall - 1];
+        noWall--;
+        p--;
+        currentHighscore++;
+        modifiedScreen = 1;
+      }
+      else
+      {
+        switchWall(wall[p].iHole, wall[p].j, 0);
+        wall[p].j--;
+        switchWall(wall[p].iHole, wall[p].j, 1);
+      }
+    }
+  }
+}
+bool checkCollision()
+{
+  bool end = 0;
+  for (int p = 0; p < noWall; p++)
+    if (wall[p].j == 1)
+      if (birdPosition != wall[p].iHole && birdPosition != (wall[p].iHole + 1) && birdPosition != (wall[p].iHole + 2))
+        end = 1;
+  return end;
+}
+void adjustGameDifficulty()
+{
+  difficultyMillis = millis();
+  if (difficultyMillis - lastDifficultyChange >= 15000 && level < 25)
+  {
+    intervalWallMove -= 10;
+    intervalWallCreate -= 30;
+    level++;
+    modifiedScreen = 1;
+    lastDifficultyChange = difficultyMillis;
+  }
+  if (currentHighscore == 100)
+    endGame(1);
+}
+void updateEEPROM( int x)
+{
+  EEPROM.update(x * 4 - 3, currentHighscore);
+  EEPROM.update(x * 4 - 2, nume[x][0]);
+  EEPROM.update(x * 4 - 1, nume[x][1]);
+  EEPROM.update(x * 4, nume[x][2]);
+}
+void endGame(int x)
+{
+  if (currentHighscore > highscore[1])
+  { highscore[3] = highscore[2];
+    highscore[2] = highscore[1];
+    highscore[1] = currentHighscore;
+    strcpy(nume[1], currentName);
+    updateEEPROM(1);
+  }
+  else if (currentHighscore > highscore[2])
+  { highscore[3] = highscore[2];
+    highscore[2] = currentHighscore;
+    strcpy(nume[2], currentName);
+    updateEEPROM(2);
+  }
+  else if (currentHighscore > highscore[3])
+  { highscore[3] = currentHighscore;
+    strcpy(nume[3], currentName);
+    updateEEPROM(3);
+  }
+  lcd.clear();
+  if (x == 0)
+  { lcd.print("Game over :( :(");
+    lcd.setCursor(0, 1);
+    lcd.print(currentName);
+    lcd.print(" - ");
+    lcd.print(currentHighscore);
+  }
+  else
+  { lcd.print("Congrats!You won!");
+    lcd.setCursor(0, 1);
+    lcd.print(currentName);
+    lcd.print(" - ");
+    lcd.print(currentHighscore);
+  }
+
+  delay(3500);
+  menuOption = 1;
+  mainMenu = 1;
+  modifiedScreen = 1;
+  newHighscorePerGame = 0;
+  for (int i = 0; i <= 7; i++)
+    for (int j = 0; j <= 7; j++)
+      lc.setLed(0, i, j, false);
+  birdPosition = 6;
+  currentHighscore = 0;
+  level = startingLevel;
+  noWall = 0;
+  intervalWallMove = 300 - 10 * startingLevel;
+  intervalWallCreate = 1500 - 30 * startingLevel;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+void loop()
+{
+  Serial.println(currentHighscore ); Serial.println(highscore[1] );
+  Serial.println(highscoreMillis ); Serial.println();
+  currentMillis = millis();
+  xValue = analogRead(PinX);
+  yValue = analogRead(PinY);
+  swState = digitalRead(PinSW);
+  if (menuOption == 1 && mainMenu == 0)
+  { if (swState != lastSwState && swState == LOW)
+      flap = flap + 2;
+    doWall();
+    adjustGameDifficulty();
+    if (currentHighscore > highscore[1] && newHighscorePerGame == 0)
+    {
+      highscoreMillis = currentMillis;
+      newHighscorePerGame = 1;
+      modifiedScreen = 1;
+    }
+
+    if (checkCollision())
+      endGame(0);
+  }
+  if ((mainMenu == 0 && menuOption != 1) || mainMenu == 1)
+  { if (currentMillis - previousMillisAutoFlap >= 700)
+    {
+      flap = flap + 2;
+      previousMillisAutoFlap = currentMillis;
+    }
+  }
+  doFlap();
+  if (currentMillis - highscoreMillis > 2000 && currentMillis - highscoreMillis < 2100)
+    modifiedScreen = 1;
+
+  if (modifiedScreen == 1)
+  { if (newHighscorePerGame == 1 && currentMillis - highscoreMillis < 2000)
+    {
+      lcd.clear();
+      printNewHighscore();
+    }
+    else
+    {
+      lcd.clear();
+      print( mainMenu, menuOption, page[menuOption]);
+    }
+    modifiedScreen = 0;
+  }
+
+  if (mainMenu == 1)
+  {
+    if (yValue > maxThreshold && joyMovedY == false)
+    { if (menuOption > 1)
+        menuOption--;
+      joyMovedY = true; modifiedScreen = 1;
+    }
+    if (yValue < minThreshold && joyMovedY == false)
+    { if (menuOption < 4)
+        menuOption++;
+      joyMovedY = true; modifiedScreen = 1;
+    }
+    if (xValue < minThreshold && joyMovedX == false)
+    {
+      menuOption = 1;
+      joyMovedX = true; modifiedScreen = 1;
+    }
+    if (xValue > maxThreshold && joyMovedX == false && menuOption == 1)
+    {
+      menuOption = 4;
+      joyMovedX = true; modifiedScreen = 1;
+    }
+  }
+  if (mainMenu == 0)
+  { if (edit == 0)
+    {
+      if (xValue < minThreshold && joyMovedX == false)
+      {
+        if (page[menuOption] == 3 && menuOption == 3)
+          page[menuOption] = 1;
+        else if (page[menuOption] > 1)
+          page[menuOption]--;
+        joyMovedX = true;
+        modifiedScreen = 1;
+      }
+      if (xValue > maxThreshold && joyMovedX == false)
+      {
+        if (page[menuOption] == 2 && menuOption == 3)
+          page[menuOption] = 4;
+        else if (page[menuOption] < pageMax[menuOption])
+          page[menuOption]++;
+        joyMovedX = true;
+        modifiedScreen = 1;
+      }
+    }
+    else if (edit == 1)
+    {
+      if (xValue > maxThreshold && joyMovedX == false)
+      {
+        if ((page[menuOption] == 7 || page[menuOption] == 8) && startingLevel > 0)
+        { startingLevel--; intervalWallMove += 10;
+          intervalWallCreate += 30;
+        }
+        if (page[menuOption] >= 11 && page[menuOption] <= 13 && currentName[letter] > 'A')
+          currentName[letter]--;
+        joyMovedX = true;
+        modifiedScreen = 1;
+      }
+      if (xValue < minThreshold && joyMovedX == false)
+      {
+        if ((page[menuOption] == 7 || page[menuOption] == 8) && startingLevel < 25)
+        { startingLevel++; intervalWallMove -= 10;
+          intervalWallCreate -= 30;
+        }
+        if (page[menuOption] >= 11 && page[menuOption] <= 13 && currentName[letter] < 'Z')
+          currentName[letter]++;
+        joyMovedX = true;
+        modifiedScreen = 1;
+      }
+      level = startingLevel;
+      if (yValue > maxThreshold && joyMovedY == false)
+      {
+        if (letter > 0)
+        {
+          letter--;
+          page[menuOption]--;
+          modifiedScreen = 1;
+        }
+        joyMovedY = true;
+      }
+      if (yValue < minThreshold && joyMovedY == false)
+      {
+        if (letter < 2)
+        {
+          letter++;
+          page[menuOption]++;
+        }
+        else
+          page[menuOption] = 14;
+        modifiedScreen = 1;
+        joyMovedY = true;
+      }
+    }
+  }
+
+  if (swState != lastSwState && swState == LOW)
+  {
+    if (mainMenu == 1 || (mainMenu == 0 && menuOption != 1 && page[menuOption] == 1))
+      mainMenu = !mainMenu;
+    if (mainMenu == 0 && menuOption == 3 && (page[menuOption] >= 2 && page[menuOption] <= 6) && edit == 0)
+    { edit = 1;
+      if (page[menuOption] == 2) page[menuOption] = 7;
+      if (page[menuOption] == 3) page[menuOption] = 8;
+      if (page[menuOption] == 4) page[menuOption] = 11;
+      lastSwState = swState;
+    }
+    if (mainMenu == 0 && menuOption == 3 && (page[menuOption] == 7 || page[menuOption] == 8 || page[menuOption] == 9 || page[menuOption] == 10 || page[menuOption] == 14) && swState != lastSwState && edit == 1)
+    { edit = 0;
+      if (page[menuOption] == 7) page[menuOption] = 2;
+      if (page[menuOption] == 8) page[menuOption] = 3;
+      if (page[menuOption] == 14) page[menuOption] = 4;
+      letter = 0;
+    }
+    modifiedScreen = 1;
+  }
+
+  if (xValue < maxThreshold && xValue > minThreshold)
+    joyMovedX = false;
+  if (yValue < maxThreshold && yValue > minThreshold)
+    joyMovedY = false;
+  lastSwState = swState;
+}

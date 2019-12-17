@@ -51,8 +51,50 @@ unsigned long lastWallCreate;
 unsigned long lastWallMove;
 short int intervalWallMove = 300;
 short int intervalWallCreate = 1300;
-
-
+const int buzzerPin = 3;
+int NOTE_SUSTAIN = 50;
+void sing(int x)
+{
+  if (x==1)
+  {
+    for (uint8_t nLoop = 0; nLoop < 2; nLoop ++)
+    {
+      tone(buzzerPin, NOTE_A5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_B5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_C5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_B5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_C5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_D5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_C5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_D5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_E5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_D5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_E5);
+      delay(NOTE_SUSTAIN);
+      tone(buzzerPin, NOTE_E5);
+      delay(NOTE_SUSTAIN);
+    }
+    noTone(buzzerPin);
+  }
+  else
+  {
+    tone(buzzerPin, NOTE_G4);
+    delay(250);
+    tone(buzzerPin, NOTE_C4);
+    delay(500);
+    noTone(buzzerPin);
+  }
+}
 
 
 
@@ -372,7 +414,7 @@ void adjustGameDifficulty()
     modifiedScreen = 1;
     lastDifficultyChange = difficultyMillis;
   }
-  if (currentHighscore == 100)
+  if (currentHighscore == 5)
     endGame(1);
 }
 void updateEEPROM( int x)
@@ -417,6 +459,7 @@ void endGame(int x)
     lcd.print(" - ");
     lcd.print(currentHighscore);
   }
+  sing(x);
 
   delay(3500);
   menuOption = 1;

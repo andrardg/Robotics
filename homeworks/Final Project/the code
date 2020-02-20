@@ -1,0 +1,185 @@
+#include <Ultrasonic.h>
+const int echoPin2 = 11;
+const int trigPin2 = 10;
+const int echoPin1 = 9;
+const int trigPin1 = 8;
+int red1 = 2;
+int yellow1 = 3;
+int green1 = 4;
+int red2 = 5;
+int yellow2 = 6;
+int green2 = 7;
+unsigned long previousMillis = 0;
+unsigned long currentMillis;
+int delayMillis;
+int state;
+int cross = 0, cross2=0;
+long duration, distance1, distance2;
+void setup ()
+{
+  pinMode(trigPin1,OUTPUT);
+  pinMode(echoPin1,INPUT);
+  pinMode(trigPin2,OUTPUT);
+  pinMode(echoPin2,INPUT);
+  pinMode(red1, OUTPUT);
+  pinMode(yellow1, OUTPUT);
+  pinMode(green1, OUTPUT);
+  pinMode(red2, OUTPUT);
+  pinMode(yellow2, OUTPUT);
+  pinMode(green2, OUTPUT);
+  state = 1;
+  Serial.begin(9600);
+}
+void loop ()
+{
+  currentMillis = millis();
+  delayMillis = currentMillis - previousMillis;
+  light1();
+  light2();
+  possible_lights();
+  change_states();
+}
+
+void light1() {
+  digitalWrite(trigPin1, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin1, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin1, LOW);
+  duration = pulseIn(echoPin1, HIGH);
+  distance1 = duration * 0.034 / 2;
+
+  if (distance1 <= 7)        
+    cross = 1; 
+    else cross=0;             
+}
+
+void light2() {
+
+  digitalWrite(trigPin2, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin2, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin2, LOW);
+  duration = pulseIn(echoPin2, HIGH);
+  distance2 = duration * 0.034 / 2;
+
+  if (distance2 <= 7)   
+  cross2=1;   
+  else cross2=0;
+}
+
+void possible_lights() {
+  switch (state) {
+    case 1:
+      digitalWrite (red1,     LOW);
+      digitalWrite (yellow1,  LOW);
+      digitalWrite (green1,   HIGH);
+      digitalWrite (red2,     HIGH);
+      digitalWrite (yellow2,  LOW);
+      digitalWrite (green2,   LOW);
+      break;
+
+    case 2:
+      digitalWrite (red1,     LOW);
+      digitalWrite (yellow1,  HIGH);
+      digitalWrite (green1,   LOW);
+      digitalWrite (red2,     HIGH);
+      digitalWrite (yellow2,  LOW);
+      digitalWrite (green2,   LOW);
+      break;
+
+    case 3:
+      digitalWrite (red1,     HIGH);
+      digitalWrite (yellow1,  LOW);
+      digitalWrite (green1,   LOW);
+      digitalWrite (red2,     HIGH);
+      digitalWrite (yellow2,  LOW);
+      digitalWrite (green2,   LOW);
+      break;
+
+    case 4:
+      digitalWrite (red1,     HIGH);
+      digitalWrite (yellow1,  LOW);
+      digitalWrite (green1,   LOW);
+      digitalWrite (red2,     LOW);
+      digitalWrite (yellow2,  LOW);
+      digitalWrite (green2,   HIGH);
+      break;
+
+    case 5:
+      digitalWrite (red1,     HIGH);
+      digitalWrite (yellow1,  LOW);
+      digitalWrite (green1,   LOW);
+      digitalWrite (red2,     LOW);
+      digitalWrite (yellow2,  HIGH);
+      digitalWrite (green2,   LOW);
+      break;
+
+    case 6:
+      digitalWrite (red1,     HIGH);
+      digitalWrite (yellow1,  LOW);
+      digitalWrite (green1,   LOW);
+      digitalWrite (red2,     HIGH);
+      digitalWrite (yellow2,  LOW);
+      digitalWrite (green2,   LOW);
+      break;
+  }
+}
+
+void change_states() {
+  switch (state) {
+    case 1:
+    if(delayMillis >5000 && delayMillis <15000 && cross2==1)
+      {
+        state = 2;
+        previousMillis = currentMillis;
+      }
+      if (delayMillis > 15000) {
+        state = 2;
+        previousMillis = currentMillis;
+      }
+      break;
+
+    case 2:
+      if (delayMillis > 2000) {
+        state = 3;
+        previousMillis = currentMillis;
+      }
+      break;
+
+    case 3:
+      if (delayMillis > 2000) {
+        state = 4;
+        previousMillis = currentMillis;
+      }
+      break;
+
+    case 4:
+      if(delayMillis >5000 && delayMillis <15000 && cross==1)
+      {
+        state = 5;
+        previousMillis = currentMillis;
+      }
+      if (delayMillis > 15000) {
+        state = 5;
+        previousMillis = currentMillis;
+      }
+
+      break;
+
+    case 5:
+      if (delayMillis > 2000) {
+        state = 6;
+        previousMillis = currentMillis;
+      }
+      break;
+
+    case 6:
+      if (delayMillis > 2000) {
+        state = 1;
+        previousMillis = currentMillis;
+      }
+      break;
+  }
+}
